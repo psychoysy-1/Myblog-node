@@ -4,6 +4,7 @@ var router = express.Router();
 /* 发布文章 */
 router.post('/', function(req, res, next) {
   console.log(req.body);
+  console.log(req.auth)
   res.json({
     code:1,
     msg: '发布文章成功'

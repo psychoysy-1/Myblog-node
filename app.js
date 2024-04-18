@@ -3,6 +3,7 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 var logger = require('morgan');
+let {expressjwt} = require('express-jwt');
 
 var articlesRouter = require('./routes/articles');
 var usersRouter = require('./routes/users');
@@ -20,9 +21,35 @@ app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// 解析jwt
+app.use(expressjwt(
+  {secret: 'ysy827469',
+  algorithms: ['HS256']
+ }).unless({
+  path: [
+    '/api/users',
+    /^\/api\/articles\/users\/\w+/,
+    {
+      url: /^\/api\/articles\/\w+/,
+      methods: ['GET']
+    }
+  ],
+ })
+);
+
 app.use('/api/articles', articlesRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/upload', uploadRouter);
+
+app.use(function(err, req, res, next) {
+  if (err.name === 'UnauthorizedError') {
+    res.
+    status(401).
+    json({code:0,msg:'无效的token或没有传递token,请重新登录'})
+  } else {
+    next(err);
+  }
+});
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
