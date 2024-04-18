@@ -32,10 +32,19 @@ app.use(expressjwt(
     {
       url: /^\/api\/articles\/\w+/,
       methods: ['GET']
-    }
+    },
+    '/api/users/captcha' // 添加动态图片验证码的路由地址
   ],
  })
 );
+
+// 设置session中间件
+const session = require('express-session');
+app.use(session({
+  secret: 'your-secret-key',
+  resave: false,
+  saveUninitialized: true
+}));
 
 app.use('/api/articles', articlesRouter);
 app.use('/api/users', usersRouter);
@@ -43,9 +52,7 @@ app.use('/api/upload', uploadRouter);
 
 app.use(function(err, req, res, next) {
   if (err.name === 'UnauthorizedError') {
-    res.
-    status(401).
-    json({code:0,msg:'无效的token或没有传递token,请重新登录'})
+    res.status(401).json({code:0,msg:'无效的token或没有传递token,请重新登录'})
   } else {
     next(err);
   }
