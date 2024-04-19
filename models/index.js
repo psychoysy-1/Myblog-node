@@ -16,7 +16,12 @@ let ArticleSchema = new Schema(
     // 文章表作者id关联用户表中id
     author: { type: Schema.Types.ObjectId, ref: 'User' },
     tag: String,
+    // imageUrl: String, // 新增图片 URL 字段
     views: {
+      type: Number,
+      default: 0
+    },
+    commentCount: {
       type: Number,
       default: 0
     }
@@ -67,6 +72,19 @@ UserSchema.index({ username: 1 }, { unique: true }); // 为 username 字段创�
 // 创建用户模型
 let User = mongoose.model('User', UserSchema);
 
+
+// 定义照片墙表的结构
+let PhotoWallSchema = new Schema({
+  imageUrl: String, // 图片地址
+  author: { type: Schema.Types.ObjectId, ref: 'User' }, // 图片上传者
+  createdAt: { type: Date, default: Date.now }, // 上传时间
+  updatedAt: { type: Date, default: Date.now } // 更新时间
+});
+
+// 创建照片墙模型
+let PhotoWall = mongoose.model('PhotoWall', PhotoWallSchema);
+
+
 // 添加虚拟属性
 ArticleSchema.virtual('comments', {
   ref: 'Comment',
@@ -82,5 +100,6 @@ ArticleSchema.set('toJSON', { virtuals: true });
 module.exports = {
   Article,
   Comment,
-  User
+  User,
+  PhotoWall
 };
