@@ -8,6 +8,7 @@ let {expressjwt} = require('express-jwt');
 var articlesRouter = require('./routes/articles');
 var usersRouter = require('./routes/users');
 var uploadRouter = require('./routes/upload');
+var commentsRouter = require('./routes/comments');
 
 var app = express();
 
@@ -33,7 +34,8 @@ app.use(expressjwt(
       url: /^\/api\/articles\/\w+/,
       methods: ['GET']
     },
-    '/api/users/captcha' // 添加动态图片验证码的路由地址
+    '/api/users/captcha', // 添加动态图片验证码的路由地址
+    /^\/api\/comments/  // 添加评论相关路由的白名单
   ],
  })
 );
@@ -49,6 +51,7 @@ app.use(session({
 app.use('/api/articles', articlesRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/upload', uploadRouter);
+app.use('/api/comments', commentsRouter);
 
 app.use(function(err, req, res, next) {
   if (err.name === 'UnauthorizedError') {

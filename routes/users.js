@@ -3,6 +3,7 @@ const router = express.Router();
 const { User } = require('../models/index');
 let jwt = require('jsonwebtoken');
 const svgCaptcha = require('svg-captcha');
+const { head } = require('./comments');
 
 // 生成图形验证码
 router.get('/captcha', (req, res) => {
@@ -19,9 +20,10 @@ router.get('/captcha', (req, res) => {
   res.status(200).send(captcha.data);
 });
 
-/* 注册请求 */
-router.post('/', function(req, res, next) {
-  const { username, password, nickname,captcha } = req.body;
+// 注册请求
+router.post('/', function (req, res, next) {
+  const { username, password, nickname, captcha } = req.body;
+
   // 验证图形验证码
   if (captcha.toLowerCase() !== req.session.captcha) {
     return res.status(400).json({
@@ -29,33 +31,45 @@ router.post('/', function(req, res, next) {
       msg: '验证码错误'
     });
   }
-  // 注册逻辑
-  if (username && password && nickname) {
-    User.create(req.body)
-      .then((user) => {
-        res.json({
-          code: 1,
-          msg: '注册成功',
-          user
-        });
-      })
-      .catch((err) => {
-        res.status(400).json({
+
+  // 先检查是否已经存在相同用户名的用户
+  User.findOne({ username })
+    .then(existingUser => {
+      if (existingUser) {
+        return res.status(400).json({
           code: 0,
-          msg: '注册失败',
-          error: err.message
+          msg: '用户名已存在'
         });
+      }
+
+      // 如果不存在,则创建新用户
+      User.create(req.body)
+        .then(user => {
+          res.json({
+            code: 1,
+            msg: '注册成功',
+            user
+          });
+        })
+        .catch(err => {
+          res.status(400).json({
+            code: 0,
+            msg: '注册失败',
+            error: err.message
+          });
+        });
+    })
+    .catch(err => {
+      console.error('注册出错:', err);
+      res.status(500).json({
+        code: 0,
+        msg: '注册失败, 服务器出错'
       });
-  } else {
-    res.status(400).json({
-      code: 0,
-      msg: '注册失败, 缺少必需参数'
     });
-  }
 });
 
 /* 登录请求 */
-router.get('/', async function(req, res, next) {
+router.get('/', async function (req, res, next) {
   const { username, password } = req.query;
 
   // 参数判断
@@ -77,7 +91,10 @@ router.get('/', async function(req, res, next) {
       res.json({
         code: 1,
         msg: '登录成功',
-        token
+        token,
+        uid: user._id,
+        username: user.username,
+        nickname: user.nickname
       });
     } else {
       res.status(401).json({

@@ -22,9 +22,19 @@ let ArticleSchema = new Schema(
     }
   },
   {
-    timestamps: true
+    timestamps: true,
+    toJSON: { virtuals: true },
+    toObject: { virtuals: true }
   }
 );
+
+// 添加虚拟属性
+ArticleSchema.virtual('comments', {
+  ref: 'Comment',
+  localField: '_id',
+  foreignField: 'article',
+  justOne: false
+});
 
 // 创建文章模型
 let Article = mongoose.model('Article', ArticleSchema);
@@ -34,7 +44,6 @@ let CommentSchema = new Schema({
   content: String,
   article: { type: Schema.Types.ObjectId, ref: 'Article' },
   author: { type: Schema.Types.ObjectId, ref: 'User' },
-  replies: [{ type: Schema.Types.ObjectId, ref: 'Comment' }],
   createdAt: { type: Date, default: Date.now },
   updatedAt: { type: Date, default: Date.now }
 });
@@ -44,13 +53,17 @@ let Comment = mongoose.model('Comment', CommentSchema);
 
 // 定义用户表的结构
 let UserSchema = new Schema({
-  username: String,
+  username: {
+    type: String,
+    unique: true,
+    required: true
+  },
   password: String,
   nickname: String,
 }, {
   timestamps: true
 });
-
+UserSchema.index({ username: 1 }, { unique: true }); // 为 username 字段创建唯一索引
 // 创建用户模型
 let User = mongoose.model('User', UserSchema);
 
