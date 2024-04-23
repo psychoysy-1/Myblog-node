@@ -3,7 +3,6 @@ const router = express.Router();
 const { User } = require('../models/index');
 let jwt = require('jsonwebtoken');
 const svgCaptcha = require('svg-captcha');
-const { head } = require('./comments');
 
 // // 生成图形验证码
 // router.get('/captcha', (req, res) => {
@@ -87,13 +86,16 @@ router.get('/login', async function (req, res, next) {
     if (user) {
       // 如果登录成功,返回 JWT 令牌,在 token 中存入用户名和 ID
       let token = jwt.sign({ username: user.username, userId: user._id }, 'ysy827469', { expiresIn: '30d', algorithm: 'HS256' });
-      res.json({
+      res.status(200).json({
         code: 0,
         msg: '登录成功',
         token,
-        uid: user._id,
+        _id: user._id,
         username: user.username,
-        nickname: user.nickname
+        nickname: user.nickname,
+        avatar: user.avatar,
+        email: user.email,
+        country: user.country
       });
     } else {
       res.status(400).json({
