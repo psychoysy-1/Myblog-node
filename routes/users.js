@@ -95,7 +95,8 @@ router.get('/login', async function (req, res, next) {
         nickname: user.nickname,
         avatar: user.avatar,
         email: user.email,
-        country: user.country
+        country: user.country,
+        blogBackground: user.blogBackground
       });
     } else {
       res.status(400).json({

@@ -13,6 +13,7 @@ const uploadRouter = require('./routes/upload');
 const commentsRouter = require('./routes/comments');
 const photoWallRouter = require('./routes/photoWall');
 const userInfoRouter = require('./routes/userInfo');
+const userBlogBackgroundRouter = require('./routes/userBlogBackground');
 
 const app = express();
 
@@ -73,6 +74,8 @@ app.use('/api/upload', uploadRouter);
 app.use('/api/comments', commentsRouter);
 app.use('/api/photoWall', photoWallRouter);
 app.use('/api/userInfo', userInfoRouter);
+app.use('/api/userBlogBackground', userBlogBackgroundRouter);
+
 
 // 配置前端直接访问图片
 app.use('/images', express.static(path.join(__dirname, 'public', 'images')));

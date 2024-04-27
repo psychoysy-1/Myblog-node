@@ -68,6 +68,7 @@ let UserSchema = new Schema({
   avatar: String, // 头像地址
   email: String, // 邮箱
   country: String, // 国家
+  blogBackground: String, // 博客背景图
 }, {
   timestamps: true
 });

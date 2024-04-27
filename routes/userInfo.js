@@ -7,7 +7,6 @@ const canvas = require('canvas');
 // 上传文件模块
 const multer = require('multer');
 const path = require('path');
-const { log } = require('console');
 
 // 设置上传文件存储路径
 const storage = multer.diskStorage({
