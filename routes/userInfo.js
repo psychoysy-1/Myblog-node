@@ -105,7 +105,6 @@ router.get('/', async (req, res) => {
   }
 });
 
-
 // 生成验证码
 router.get('/captcha', (req, res) => {
   const width = 100, height = 40;

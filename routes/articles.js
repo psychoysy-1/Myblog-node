@@ -1,41 +1,64 @@
 var express = require('express');
 var router = express.Router();
 const { Article } = require('../models/index');
-const { body, validationResult } = require('express-validator');
+
+// 中间件
+// 上传文件模块
+const multer = require('multer');
+const path = require('path');
+
+// 设置上传文件存储路径
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, "public/images/blogImages")
+  },
+  filename: function (req, file, cb) {
+    // 生成时间戳
+    const timestamp = Date.now();
+    // 生成随机数
+    const randomNumber = Math.floor(Math.random() * 1000000);
+    // 获取文件扩展名
+    const ext = path.extname(file.originalname);
+    // 拼接文件名
+    const fileName = `${timestamp}${randomNumber}${ext}`;
+    cb(null, fileName);
+  }
+})
+// 根据存储设置,创建upload对象
+const upload = multer({ storage: storage }).array("blogImages", 9);
 
 /* 发布文章 */
-router.post('/',
-  [
-    body('title').notEmpty().withMessage('文章标题不能为空'),
-    body('content').notEmpty().withMessage('文章内容不能为空'),
-    body('tag').optional().isString().withMessage('标签必须是字符串')
-  ],
-  async (req, res, next) => {
-    const errors = validationResult(req);
-    if (!errors.isEmpty()) {
-      return res.status(400).json({ code: 0, msg: errors.array()[0].msg });
-    }
-
-    try {
-      // 将 author 直接添加到 req.body 中
-      const article = await Article.create({
-        ...req.body,
-        author: req.body.uid
-      });
-      res.json({
-        code: 1,
-        msg: '发布文章成功',
-        article
-      });
-    } catch (e) {
-      console.error('发布文章失败:', e);
-      res.status(500).json({
-        code: 0,
-        msg: '发布文章失败，服务器出错'
-      });
-    }
+router.post('/',upload, async (req, res, next) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ code: 1, msg: '未上传任何文件' });
   }
-);
+  try {
+    // 遍历上传的文件,生成图片 URL
+    const imageUrls = req.files.map(file => {
+      const imgUrl = '/' + path.join('images/blogImages', file.filename).replace(/\\/g, '/');
+      return imgUrl;
+    });
+
+    const article = await Article.create({
+      ...req.body,
+      author: req.body.uid,
+      tags: req.body.tags,
+      imageUrl: imageUrls // 将图片 URL 存储到 imageUrl 字段
+    });
+
+    res.status(200).json({
+      code: 0,
+      msg: '发布文章成功',
+      article
+    });
+  } catch (e) {
+    console.error('发布文章失败:', e);
+    res.status(500).json({
+      code: 1,
+      msg: '发布文章失败，服务器出错'
+    });
+  }
+});
 
 /* 根据用户id获取文章列表 */
 router.get('/articles', function (req, res, next) {
@@ -111,7 +134,7 @@ router.delete('/', async (req, res, next) => {
     });
   } catch (e) {
     console.error('根据文章id删除对应文章失败:', e);
-    
+
     // 判断错误类型,如果是 CastError 说明 aid 格式不正确
     if (e.name === 'CastError') {
       return res.status(400).json({
