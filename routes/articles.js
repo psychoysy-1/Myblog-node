@@ -61,27 +61,53 @@ router.post('/',upload, async (req, res, next) => {
 });
 
 /* 根据用户id获取文章列表 */
-router.get('/articles', function (req, res, next) {
-  const { uid } = req.query;
+router.post('/uid', async (req, res, next) => {
+  console.log(req.body)
+  try {
+    const { author, tag, year, order = 0, search } = req.body;
 
-  Article.find({ author: uid })
-    .populate('author', { password: 0 })
-    .populate('comments')
-    .then((articles) => {
-      res.json({
-        code: 1,
-        msg: '根据用户id获取文章列表成功',
-        data: articles
-      });
-    })
-    .catch((e) => {
-      console.error('根据用户id获取文章列表失败:', e);
-      res.status(500).json({
-        code: 0,
-        msg: '根据用户id获取文章列表失败, 服务器出错'
-      });
+    // 构建查询条件
+    const query = { author: author };
+
+    // 如果传入了 tag 参数,则添加 tag 查询条件
+    if (tag) {
+      query.tags = { $in: [tag] };
+    }
+
+    // 如果传入了 year 参数,则添加年份查询条件
+    if (year) {
+      const startDate = new Date(`${year}-01-01`);
+      const endDate = new Date(`${year}-12-31`);
+      query.createdAt = { $gte: startDate, $lte: endDate };
+    }
+
+    // 如果传入了 search 参数,则添加搜索查询条件
+    if (search) {
+      query.title = { $regex: search, $options: 'i' };
+    }
+
+    // 根据 order 参数进行排序
+    const sortOrder = order === '1' ? '-createdAt' : 'createdAt';
+
+    // 查询数据库,返回结果
+    const articles = await Article.find(query)
+      .sort(sortOrder)
+      .populate('author', 'nickname avatar');
+
+    res.status(200).json({
+      code: 0,
+      msg: '获取文章列表成功',
+      articles
     });
+  } catch (e) {
+    console.error('获取文章列表失败:', e);
+    res.status(500).json({
+      code: 1,
+      msg: '获取文章列表失败,服务器出错'
+    });
+  }
 });
+
 
 /* 根据文章id获取文章详情 */
 router.get('/', function (req, res, next) {
