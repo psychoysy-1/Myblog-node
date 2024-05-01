@@ -32,7 +32,7 @@ const upload = multer({ storage: storage }).single("avatar");
 /* 更新用户信息 */
 router.put('/', upload, async (req, res) => {
   try {
-    const { _id } = req.body;
+    const { _id, signature } = req.body;
     const updateData = {};
 
     // 更新头像
@@ -44,6 +44,7 @@ router.put('/', upload, async (req, res) => {
     if (req.body.email !== undefined) updateData.email = req.body.email;
     if (req.body.country !== undefined) updateData.country = req.body.country;
     if (req.body.nickname !== undefined) updateData.nickname = req.body.nickname;
+    if (signature !== undefined) updateData.signature = signature; // 更新签名
 
     // 检查 _id 是否存在于数据库
     const user = await User.findById(_id);
@@ -60,6 +61,7 @@ router.put('/', upload, async (req, res) => {
     res.json({
       code: 0,
       msg: '更新成功',
+      user: updatedUser
     });
   } catch (err) {
     console.error('更新用户信息出错:', err);
@@ -92,7 +94,8 @@ router.get('/', async (req, res) => {
         email: user.email,
         country: user.country,
         nickname: user.nickname,
-        avatar: user.avatar
+        avatar: user.avatar,
+        signature: user.signature
       }
     });
   } catch (err) {
@@ -168,5 +171,6 @@ router.put('/password', async (req, res) => {
   }
 });
 
+// 上传用户签名
 
 module.exports = router;
