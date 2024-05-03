@@ -1,6 +1,8 @@
 var express = require('express');
 var router = express.Router();
+const mongoose = require('mongoose');
 const { Article } = require('../models/index');
+const fs = require('fs');
 
 // 中间件
 // 上传文件模块
@@ -108,106 +110,102 @@ router.post('/uid', async (req, res, next) => {
   }
 });
 
-
-/* 根据文章id获取文章详情 */
-router.get('/', function (req, res, next) {
-  const { aid } = req.query;
-
-  Article.findById(aid)
-    .populate('author', { password: 0 })
-    .populate('comments')
-    .then((article) => {
-      if (!article) {
-        return res.status(404).json({
-          code: 0,
-          msg: '未找到该文章'
-        });
-      }
-
-      res.json({
-        code: 1,
-        msg: '根据文章id获取文章详情成功',
-        data: article
-      });
-    })
-    .catch((e) => {
-      console.error('根据文章id获取文章详情失败:', e);
-      res.status(500).json({
-        code: 0,
-        msg: '根据文章id获取文章详情失败, 服务器出错'
-      });
-    });
-});
-
-
-/* 根据文章id删除对应文章 */
-router.delete('/', async (req, res, next) => {
-  const { aid } = req.query;
-
+// 获取指定作者的标签和年份数据
+router.get('/tagsAndYears/:authorId', async (req, res, next) => {
   try {
-    const article = await Article.findByIdAndDelete(aid);
+    const { authorId } = req.params;
 
-    if (!article) {
-      return res.status(404).json({
-        code: 0,
-        msg: '未找到该文章'
-      });
-    }
+    const result = await Article.aggregate([
+      { $match: { author: new mongoose.Types.ObjectId(authorId), createdAt: { $ne: null } } },
+      {
+        $group: {
+          _id: {
+            year: { $year: '$createdAt' },
+          },
+          tags: { $push: '$tags' }, // 将所有标签推入一个数组
+          count: { $count: {} },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          year: '$_id.year',
+          count: '$count',
+          tags: { $reduce: { input: '$tags', initialValue: [], in: { $setUnion: ['$$value', '$$this'] } } }, // 合并标签数组并去重
+        },
+      },
+      { $sort: { year: -1 } },
+    ]);
 
-    res.json({
-      code: 1,
-      msg: '根据文章id删除对应文章成功'
+    const uniqueTags = [...new Set(result.flatMap(item => item.tags))]; // 再次去重
+    const years = result.map(item => `${item.year}(${item.count})`);
+
+    res.status(200).json({
+      code: 0,
+      msg: '获取标签和年份数据成功',
+      data: {
+        tags: uniqueTags,
+        years,
+      },
     });
   } catch (e) {
-    console.error('根据文章id删除对应文章失败:', e);
-
-    // 判断错误类型,如果是 CastError 说明 aid 格式不正确
-    if (e.name === 'CastError') {
-      return res.status(400).json({
-        code: 0,
-        msg: '无效的文章 ID'
-      });
-    }
-
+    console.error('获取标签和年份数据失败:', e);
     res.status(500).json({
-      code: 0,
-      msg: '根据文章id删除对应文章失败, 服务器出错'
+      code: 1,
+      msg: '获取标签和年份数据失败，服务器出错',
     });
   }
 });
 
-/* 根据文章id编辑对应文章 */
-router.patch('/', async (req, res, next) => {
-  const { aid } = req.query;
-  const { title, content } = req.body;
-
+/* 增加文章浏览量 */
+router.patch('/views/:id', async (req, res, next) => {
   try {
-    // 先验证 aid 是否是一个合法的文章 ID
-    const article = await Article.findById(aid);
+    const articleId = req.params.id;
+    const article = await Article.findById(articleId);
+
     if (!article) {
-      return res.status(400).json({
-        code: 0,
-        msg: '无效的文章 ID'
-      });
+      return res.status(404).json({ code: 1, msg: '文章不存在' });
     }
 
-    const updatedArticle = await Article.findByIdAndUpdate(
-      aid,
-      { title, content },
-      { new: true, runValidators: true }
-    );
+    article.views += 1;
+    await article.save();
 
-    res.json({
-      code: 1,
-      msg: '根据文章id编辑对应文章成功',
-      data: updatedArticle
+    res.status(200).json({
+      code: 0,
+      msg: '文章浏览量增加成功',
+      article
     });
   } catch (e) {
-    console.error('根据文章id编辑对应文章失败:', e);
+    console.error('增加文章浏览量失败:', e);
     res.status(500).json({
-      code: 0,
-      msg: '根据文章id编辑对应文章失败, 服务器出错'
+      code: 1,
+      msg: '增加文章浏览量失败，服务器出错'
     });
+  }
+});
+
+/* 根据文章id删除对应文章 */
+router.delete('/:id', async (req, res, next) => {
+  try {
+    const articleId = req.params.id;
+    const article = await Article.findById(articleId);
+    if (!article) {
+      return res.status(404).json({ code: 1, msg: '文章不存在' });
+    }
+
+    // 首先删除文章对应的图片
+    await Promise.all(article.imageUrl.map(async (url) => {
+      const filePath = path.join(__dirname, '../public', url.slice(1));
+      await fs.promises.unlink(filePath);
+    }));
+
+    // 然后删除文章记录
+    await Article.findByIdAndDelete(articleId);
+
+    res.status(200).json({ code: 0, msg: '删除文章成功' });
+  } catch (e) {
+    console.error('删除文章失败:', e);
+    res.status(500).json({ code: 1, msg: '删除文章失败,服务器出错' });
   }
 });
 
