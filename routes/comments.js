@@ -12,7 +12,7 @@ router.post('/create',
   async (req, res, next) => {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
-      return res.status(400).json({ code: 0, msg: errors.array()[0].msg });
+      return res.status(400).json({ code: 1, msg: errors.array()[0].msg });
     }
 
     try {
@@ -30,7 +30,7 @@ router.post('/create',
       );
 
       res.json({
-        code: 1,
+        code: 0,
         msg: '创建评论成功',
         data: {
           comment: newComment,
@@ -40,7 +40,7 @@ router.post('/create',
     } catch (e) {
       console.error('创建评论失败:', e);
       res.status(500).json({
-        code: 0,
+        code: 1,
         msg: '创建评论失败, 服务器出错',
         error: e.message
       });
@@ -53,22 +53,22 @@ router.get('/', async (req, res, next) => {
   const { aid } = req.query;
 
   if (!aid) {
-    return res.status(400).json({ code: 0, msg: '请提供文章 ID' });
+    return res.status(400).json({ code: 1, msg: '请提供文章 ID' });
   }
 
   try {
     const comments = await Comment.find({ article: aid })
       .populate("author", { password: 0 });
 
-    res.json({
-      code: 1,
+    res.status(200).json({
+      code: 0,
       msg: '获取评论成功',
       data: comments
     });
   } catch (e) {
     console.error('获取评论失败:', e);
     res.status(500).json({
-      code: 0,
+      code: 1,
       msg: '获取评论失败, 服务器出错',
       error: e.message
     });
@@ -84,11 +84,11 @@ router.delete('/', async (req, res, next) => {
     // 查找评论并检查是否由当前用户发表
     const comment = await Comment.findById(cid);
     if (!comment) {
-      return res.status(404).json({ code: 0, msg: '评论不存在' });
+      return res.status(404).json({ code: 1, msg: '评论不存在' });
     }
 
     if (comment.author.toString() !== uid) {
-      return res.status(403).json({ code: 0, msg: '无权删除该评论' });
+      return res.status(403).json({ code: 1, msg: '无权删除该评论' });
     }
 
     // 删除评论
@@ -100,13 +100,13 @@ router.delete('/', async (req, res, next) => {
     });
 
     res.json({
-      code: 1,
+      code: 0,
       msg: '删除评论成功'
     });
   } catch (e) {
     console.error('删除评论失败:', e);
     res.status(500).json({
-      code: 0,
+      code: 1,
       msg: '删除评论失败, 服务器出错',
       error: e.message
     });
