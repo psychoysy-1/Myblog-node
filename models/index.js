@@ -73,15 +73,15 @@ UserSchema.index({ username: 1 }, { unique: true }); // 为 username 字段创�
 // 创建用户模型
 let User = mongoose.model('User', UserSchema);
 
-// 定义照片墙表的结构
-let PhotoWallSchema = new Schema({
-  imageUrl: String, // 图片地址
-  author: { type: Schema.Types.ObjectId, ref: 'User' }, // 图片上传者
-  createdAt: { type: Date, default: Date.now }, // 上传时间
-  updatedAt: { type: Date, default: Date.now } // 更新时间
-});
-// 创建照片墙模型
-let PhotoWall = mongoose.model('PhotoWall', PhotoWallSchema);
+// // 定义照片墙表的结构
+// let PhotoWallSchema = new Schema({
+//   imageUrl: String, // 图片地址
+//   author: { type: Schema.Types.ObjectId, ref: 'User' }, // 图片上传者
+//   createdAt: { type: Date, default: Date.now }, // 上传时间
+//   updatedAt: { type: Date, default: Date.now } // 更新时间
+// });
+// // 创建照片墙模型
+// let PhotoWall = mongoose.model('PhotoWall', PhotoWallSchema);
 
 // 关注表结构
 let FollowerSchema = new Schema({
@@ -96,6 +96,5 @@ module.exports = {
   Article,
   Comment,
   User,
-  PhotoWall,
   Follower
 };
