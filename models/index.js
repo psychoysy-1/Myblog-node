@@ -24,6 +24,10 @@ let ArticleSchema = new Schema(
     commentCount: {
       type: Number,
       default: 0
+    },
+    isPrivate: {
+      type: Boolean,
+      default: false
     }
   },
   {
@@ -79,9 +83,19 @@ let PhotoWallSchema = new Schema({
 // 创建照片墙模型
 let PhotoWall = mongoose.model('PhotoWall', PhotoWallSchema);
 
+// 关注表结构
+let FollowerSchema = new Schema({
+  follower: { type: Schema.Types.ObjectId, ref: 'User' }, // 关注者
+  followee: { type: Schema.Types.ObjectId, ref: 'User' }, // 被关注者
+  createdAt: { type: Date, default: Date.now } // 关注时间
+});
+
+let Follower = mongoose.model('Follower', FollowerSchema);
+
 module.exports = {
   Article,
   Comment,
   User,
-  PhotoWall
+  PhotoWall,
+  Follower
 };

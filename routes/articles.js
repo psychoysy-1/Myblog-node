@@ -225,24 +225,86 @@ router.delete('/:id', async (req, res, next) => {
   }
 });
 
-// 社交大厅所有用户的文章列表
+// 社交大厅所有用户的公开文章列表
 router.get('/allArticles', async (req, res, next) => {
   try {
-    // 查询数据库,返回所有文章
-    const articles = await Article.find({})
+    // 查询数据库,返回所有公开文章
+    const articles = await Article.find({ isPrivate: false })
       .sort('-createdAt')
       .populate('author', 'nickname avatar');
 
     res.status(200).json({
       code: 0,
-      msg: '获取文章列表成功',
+      msg: '获取公开文章列表成功',
       articles
     });
   } catch (e) {
-    console.error('获取文章列表失败:', e);
+    console.error('获取公开文章列表失败:', e);
     res.status(500).json({
       code: 1,
-      msg: '获取文章列表失败,服务器出错'
+      msg: '获取公开文章列表失败,服务器出错'
+    });
+  }
+});
+
+/* 更新文章私密性 */
+router.put('/:id/private', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { isPrivate } = req.body;
+
+    const article = await Article.findByIdAndUpdate(
+      id,
+      { isPrivate },
+      { new: true, runValidators: true }
+    );
+
+    if (!article) {
+      return res.status(404).json({ code: 1, msg: '文章不存在' });
+    }
+
+    res.status(200).json({
+      code: 0,
+      msg: '更新文章私密性成功',
+      article
+    });
+  } catch (e) {
+    console.error('更新文章私密性失败:', e);
+    res.status(500).json({
+      code: 1,
+      msg: '更新文章私密性失败，服务器出错'
+    });
+  }
+});
+
+// 根据文章 ID 获取发表该文章的用户信息
+router.get('/:id/userInfo', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const article = await Article.findById(id).populate('author', 'nickname avatar signature blogBackground');
+
+    if (!article) {
+      return res.status(404).json({ code: 1, msg: '文章不存在' });
+    }
+
+    const { author } = article;
+    const userInfo = {
+      nickname: author.nickname,
+      avatar: author.avatar,
+      signature: author.signature,
+      blogBackground: author.blogBackground
+    };
+
+    res.status(200).json({
+      code: 0,
+      msg: '获取用户信息成功',
+      userInfo
+    });
+  } catch (e) {
+    console.error('获取用户信息失败:', e);
+    res.status(500).json({
+      code: 1,
+      msg: '获取用户信息失败,服务器出错'
     });
   }
 });
