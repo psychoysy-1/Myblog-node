@@ -92,7 +92,6 @@ let FollowerSchema = new Schema({
 
 let Follower = mongoose.model('Follower', FollowerSchema);
 
-// 导出
 module.exports = {
   Article,
   Comment,

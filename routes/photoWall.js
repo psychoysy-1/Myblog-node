@@ -85,8 +85,8 @@ router.get('/getPhotoWall', async (req, res) => {
       return acc;
     }, []);
 
-    // 从数组中随机选择 12 个图片地址,如果 imageUrls 长度小于 12 则直接返回
-    const photoWallData = imageUrls.length > 12 ? imageUrls.sort(() => Math.random() - 0.5).slice(0, 12) : imageUrls;
+    // 如果 imageUrls 长度小于 12,则打乱顺序后返回全部
+    const photoWallData = imageUrls.sort(() => Math.random() - 0.5);
 
     res.json({
       code: 0,
