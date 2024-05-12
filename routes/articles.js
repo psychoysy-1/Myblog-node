@@ -30,7 +30,7 @@ const storage = multer.diskStorage({
 const upload = multer({ storage: storage }).array("blogImages", 9);
 
 /* 发布文章 */
-router.post('/',upload, async (req, res, next) => {
+router.post('/', upload, async (req, res, next) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ code: 1, msg: '未上传任何文件' });
   }
@@ -41,10 +41,18 @@ router.post('/',upload, async (req, res, next) => {
       return imgUrl;
     });
 
+    // 将 tags 字段从字符串改为数组格式
+    let tags = [];
+    if (typeof req.body.tags === 'string') {
+      tags = req.body.tags.split(',').map(tag => tag.trim());
+    } else if (Array.isArray(req.body.tags)) {
+      tags = req.body.tags;
+    }
+
     const article = await Article.create({
       ...req.body,
       author: req.body.uid,
-      tags: req.body.tags,
+      tags: tags,
       imageUrl: imageUrls // 将图片 URL 存储到 imageUrl 字段
     });
 
@@ -64,7 +72,6 @@ router.post('/',upload, async (req, res, next) => {
 
 /* 根据用户id获取文章列表 */
 router.post('/uid', async (req, res, next) => {
-  console.log(req.body)
   try {
     const { author, tag, year, order = 0, search } = req.body;
 
@@ -85,16 +92,24 @@ router.post('/uid', async (req, res, next) => {
 
     // 如果传入了 search 参数,则添加搜索查询条件
     if (search) {
-      query.title = { $regex: search, $options: 'i' };
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { content: { $regex: search, $options: 'i' } }
+      ];
     }
 
     // 根据 order 参数进行排序
     const sortOrder = order === '1' ? '-createdAt' : 'createdAt';
 
     // 查询数据库,返回结果
-    const articles = await Article.find(query)
+    let articles = await Article.find(query)
       .sort(sortOrder)
       .populate('author', 'nickname avatar');
+
+    // 如果传入了 tag 参数,则过滤出包含该 tag 的文章
+    if (tag) {
+      articles = articles.filter(article => article.tags.includes(tag));
+    }
 
     res.status(200).json({
       code: 0,
@@ -110,7 +125,7 @@ router.post('/uid', async (req, res, next) => {
   }
 });
 
-// 获取指定作者的标签和年份数据
+/* 根据用户id获取年份和标签列表 */
 router.get('/tagsAndYears/:authorId', async (req, res, next) => {
   try {
     const { authorId } = req.params;
@@ -122,7 +137,6 @@ router.get('/tagsAndYears/:authorId', async (req, res, next) => {
           _id: {
             year: { $year: '$createdAt' },
           },
-          tags: { $push: '$tags' }, // 将所有标签推入一个数组
           count: { $count: {} },
         },
       },
@@ -131,20 +145,22 @@ router.get('/tagsAndYears/:authorId', async (req, res, next) => {
           _id: 0,
           year: '$_id.year',
           count: '$count',
-          tags: { $reduce: { input: '$tags', initialValue: [], in: { $setUnion: ['$$value', '$$this'] } } }, // 合并标签数组并去重
         },
       },
       { $sort: { year: -1 } },
     ]);
 
-    const uniqueTags = [...new Set(result.flatMap(item => item.tags))]; // 再次去重
+    // 获取标签列表
+    const tags = await Article.distinct('tags', { author: new mongoose.Types.ObjectId(authorId) });
+
+    // 将年份和文章数量转换为数组
     const years = result.map(item => `${item.year}(${item.count})`);
 
     res.status(200).json({
       code: 0,
       msg: '获取标签和年份数据成功',
       data: {
-        tags: uniqueTags,
+        tags,
         years,
       },
     });
@@ -206,6 +222,28 @@ router.delete('/:id', async (req, res, next) => {
   } catch (e) {
     console.error('删除文章失败:', e);
     res.status(500).json({ code: 1, msg: '删除文章失败,服务器出错' });
+  }
+});
+
+// 社交大厅所有用户的文章列表
+router.get('/allArticles', async (req, res, next) => {
+  try {
+    // 查询数据库,返回所有文章
+    const articles = await Article.find({})
+      .sort('-createdAt')
+      .populate('author', 'nickname avatar');
+
+    res.status(200).json({
+      code: 0,
+      msg: '获取文章列表成功',
+      articles
+    });
+  } catch (e) {
+    console.error('获取文章列表失败:', e);
+    res.status(500).json({
+      code: 1,
+      msg: '获取文章列表失败,服务器出错'
+    });
   }
 });
 

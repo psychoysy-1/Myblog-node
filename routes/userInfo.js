@@ -171,6 +171,5 @@ router.put('/password', async (req, res) => {
   }
 });
 
-// 上传用户签名
 
 module.exports = router;

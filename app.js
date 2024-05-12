@@ -14,6 +14,7 @@ const commentsRouter = require('./routes/comments');
 const photoWallRouter = require('./routes/photoWall');
 const userInfoRouter = require('./routes/userInfo');
 const userBlogBackgroundRouter = require('./routes/userBlogBackground');
+const statisticsRouter = require('./routes/statistics');
 
 const app = express();
 
@@ -75,6 +76,7 @@ app.use('/api/comments', commentsRouter);
 app.use('/api/photoWall', photoWallRouter);
 app.use('/api/userInfo', userInfoRouter);
 app.use('/api/userBlogBackground', userBlogBackgroundRouter);
+app.use('/api/statistics', statisticsRouter);
 
 
 // 配置前端直接访问图片
