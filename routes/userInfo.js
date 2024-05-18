@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { User } = require('../models');
+const { User, Follower,Article } = require('../models');
 const canvas = require('canvas');
 
 // 中间件
@@ -171,6 +171,229 @@ router.put('/password', async (req, res) => {
   }
 });
 
+// 关注区域
+// 关注路由
+router.post('/follow', async (req, res) => {
+  try {
+    const { followerId, followeeId } = req.body;
 
+    // 检查关注者和被关注者是否存在
+    const [follower, followee] = await Promise.all([
+      User.findById(followerId),
+      User.findById(followeeId)
+    ]);
+
+    if (!follower) {
+      return res.status(404).json({
+        code: 1,
+        msg: '关注者不存在'
+      });
+    }
+
+    if (!followee) {
+      return res.status(404).json({
+        code: 1,
+        msg: '被关注者不存在'
+      });
+    }
+
+    // 检查是否已经关注
+    const existingFollow = await Follower.findOne({
+      follower: followerId,
+      followee: followeeId
+    });
+
+    if (existingFollow) {
+      return res.status(400).json({
+        code: 1,
+        msg: '您已经关注了该用户'
+      });
+    }
+
+    // 创建新的关注记录
+    const newFollow = new Follower({
+      follower: followerId,
+      followee: followeeId
+    });
+
+    await newFollow.save();
+
+    res.status(201).json({
+      code: 0,
+      msg: '关注成功',
+      data: newFollow
+    });
+  } catch (err) {
+    console.error('关注出错:', err);
+    res.status(500).json({
+      code: 1,
+      msg: '关注失败, 服务器出错',
+      error: err.message
+    });
+  }
+});
+
+// 查询关注状态
+router.get('/follow', async (req, res) => {
+  try {
+    const { followerId, followeeId } = req.query;
+
+    // 检查关注者和被关注者是否存在
+    const [follower, followee] = await Promise.all([
+      User.findById(followerId),
+      User.findById(followeeId)
+    ]);
+
+    if (!follower) {
+      return res.status(404).json({
+        code: 1,
+        msg: '关注者不存在'
+      });
+    }
+
+    if (!followee) {
+      return res.status(404).json({
+        code: 1,
+        msg: '被关注者不存在'
+      });
+    }
+
+    // 检查是否已经关注
+    const existingFollow = await Follower.findOne({
+      follower: followerId,
+      followee: followeeId
+    });
+
+    if (existingFollow) {
+      return res.status(200).json({
+        code: 0,
+        msg: '已关注',
+        data: true
+      });
+    } else {
+      return res.status(200).json({
+        code: 0,
+        msg: '未关注',
+        data: false
+      });
+    }
+  } catch (err) {
+    console.error('查询关注状态出错:', err);
+    res.status(500).json({
+      code: 1,
+      msg: '查询关注状态失败, 服务器出错',
+      error: err.message
+    });
+  }
+});
+
+// 取消关注
+router.delete('/follow', async (req, res) => {
+  try {
+    const { followerId, followeeId } = req.body;
+
+    // 检查关注者和被关注者是否存在
+    const [follower, followee] = await Promise.all([
+      User.findById(followerId),
+      User.findById(followeeId)
+    ]);
+
+    if (!follower) {
+      return res.status(404).json({
+        code: 1,
+        msg: '关注者不存在'
+      });
+    }
+
+    if (!followee) {
+      return res.status(404).json({
+        code: 1,
+        msg: '被关注者不存在'
+      });
+    }
+
+    // 检查是否已经关注
+    const existingFollow = await Follower.findOneAndDelete({
+      follower: followerId,
+      followee: followeeId
+    });
+
+    if (!existingFollow) {
+      return res.status(400).json({
+        code: 1,
+        msg: '您尚未关注该用户'
+      });
+    }
+
+    res.status(200).json({
+      code: 0,
+      msg: '取消关注成功'
+    });
+  } catch (err) {
+    console.error('取消关注出错:', err);
+    res.status(500).json({
+      code: 1,
+      msg: '取消关注失败, 服务器出错',
+      error: err.message
+    });
+  }
+});
+
+// 通知 返回关注人的所有文章
+router.get('/followed-articles', async (req, res) => {
+  try {
+    const followerId = req.query.followerId;
+
+    // 获取当前用户关注的所有用户 ID
+    const followedUserIds = await Follower.find({ follower: followerId })
+      .select('followee')
+      .then(follows => follows.map(follow => follow.followee));
+
+    // 聚合查询每个被关注用户的文章
+    const articles = await Article.aggregate([
+      {
+        $match: {
+          author: { $in: followedUserIds },
+          isPrivate: false // 添加此条件,排除 isPrivate 为 true 的文章
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'author',
+          foreignField: '_id',
+          as: 'authorInfo'
+        }
+      },
+      {
+        $project: {
+          _id: 1,
+          title: 1,
+          createdAt: 1,
+          'authorInfo._id': 1, // 返回用户 ID
+          'authorInfo.nickname': 1,
+          'authorInfo.avatar': 1
+        }
+      },
+      {
+        $sort: {
+          createdAt: -1 // 按创建时间降序排列
+        }
+      }
+    ]);
+
+    res.status(200).json({
+      code: 0,
+      data: articles
+    });
+  } catch (err) {
+    console.error('获取关注者文章出错:', err);
+    res.status(500).json({
+      code: 1,
+      msg: '获取关注者文章失败, 服务器出错',
+      error: err.message
+    });
+  }
+});
 
 module.exports = router;

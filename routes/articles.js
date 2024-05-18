@@ -309,4 +309,45 @@ router.get('/:id/userInfo', async (req, res, next) => {
   }
 });
 
+/* 根据文章id获取文章详情 */
+router.get('/:id', async (req, res, next) => {
+  try {
+    const articleId = req.params.id;
+    const article = await Article.findById(articleId)
+      .populate('author', 'nickname avatar'); // 将关联的用户信息一并返回
+
+    if (!article) {
+      return res.status(404).json({ code: 1, msg: '文章不存在' });
+    }
+
+    // 更新文章的浏览量
+    article.views++;
+    await article.save();
+
+    res.status(200).json({
+      code: 0,
+      msg: '获取文章详情成功',
+      article: {
+        _id: article._id,
+        title: article.title,
+        content: article.content,
+        author: article.author,
+        tags: article.tags,
+        imageUrl: article.imageUrl,
+        views: article.views,
+        commentCount: article.commentCount,
+        isPrivate: article.isPrivate,
+        createdAt: article.createdAt,
+        updatedAt: article.updatedAt
+      }
+    });
+  } catch (e) {
+    console.error('获取文章详情失败:', e);
+    res.status(500).json({
+      code: 1,
+      msg: '获取文章详情失败,服务器出错'
+    });
+  }
+});
+
 module.exports = router;
